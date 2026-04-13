@@ -2,7 +2,6 @@
 Credit Card Fraud Detection - Ensemble ML Approach
 Final Year Project | SOA University ITER | Group 27-09
 Members: Dhruv Kashyap, Kartikey, Adwait Bhatnagar, Diwankar Kumar Choudhary
-Supervisor: Ms. Anisha Mukherjee
 
 ALIEN TECH EDITION ◈ 2026 ◈ LIGHT MODE
 """
@@ -396,7 +395,6 @@ with st.sidebar:
     st.markdown("""
     <div style="height:1px;background:linear-gradient(90deg,transparent,#5588aa,transparent);margin:16px 0;"></div>
     <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#8aaabb;text-align:center;">
-        SUPERVISOR: MS. ANISHA MUKHERJEE<br>
         <span style="color:#b0c8d8;">◈ SOA UNIVERSITY ITER ◈ 2026</span>
     </div>""", unsafe_allow_html=True)
 
@@ -647,7 +645,7 @@ with tab1:
                 </div>""", unsafe_allow_html=True)
 
         st.markdown('<div class="section-header">02 ◈ Data Matrix Preview</div>', unsafe_allow_html=True)
-        st.dataframe(df.head(10), width="stretch", height=280)
+        st.dataframe(df.head(10), use_container_width=True, height=280)
 
         st.markdown('<div class="section-header">03 ◈ Exploratory Signal Analysis</div>', unsafe_allow_html=True)
 
@@ -717,7 +715,7 @@ with tab1:
 
         st.markdown('<div class="section-header">04 ◈ Statistical Matrix</div>', unsafe_allow_html=True)
         st.caption(f"EDA charts use a sampled view for speed ({len(eda_df):,} rows). Metrics above are from the full dataset.")
-        st.dataframe(get_stats_table(df), width="stretch")
+        st.dataframe(get_stats_table(df), use_container_width=True)
 
 
 # ══════════════════════════════════════════════
@@ -774,7 +772,7 @@ with tab2:
                 st.pyplot(fig); plt.close()
 
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("⬡  INITIALIZE PREPROCESSING SEQUENCE", width="stretch"):
+        if st.button("⬡  INITIALIZE PREPROCESSING SEQUENCE", use_container_width=True):
             with st.spinner("◈ EXECUTING PREPROCESSING PIPELINE..."):
                 prep = preprocess_data(df, test_size, apply_smote, random_state)
                 st.session_state.update(prep)
@@ -818,7 +816,7 @@ with tab3:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        if st.button("⬡  ENGAGE TRAINING SEQUENCE — ALL MODELS", width="stretch"):
+        if st.button("⬡  ENGAGE TRAINING SEQUENCE — ALL MODELS", use_container_width=True):
             X_train = st.session_state["X_train"]
             y_train = st.session_state["y_train"]
             X_test  = st.session_state["X_test"]
@@ -887,7 +885,7 @@ with tab4:
             for name, v in results.items()
         }).T
         metrics_df.index.name = "MODEL"
-        st.dataframe(metrics_df, width="stretch")
+        st.dataframe(metrics_df, use_container_width=True)
 
         # Bar grid
         st.markdown('<div class="section-header">03 ◈ Metric Comparison Grid</div>', unsafe_allow_html=True)
@@ -980,9 +978,6 @@ st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:0.28em;
                 color:#8aaabb;text-transform:uppercase;">
         ◈ NEURAL FRAUD SENTINEL ◈ GROUP 27-09 ◈ SOA UNIVERSITY ITER ◈ 2026 ◈
-    </div>
-    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#b0c8d8;margin-top:6px;">
-        SUPERVISED BY MS. ANISHA MUKHERJEE
     </div>
 </div>
 """, unsafe_allow_html=True)
