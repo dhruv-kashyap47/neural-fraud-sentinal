@@ -42,39 +42,122 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────
-#  DARK MODE — OPTIMIZED CSS
+#  THEME SYSTEM
 # ─────────────────────────────────────────────
-st.markdown("""
+THEMES = {
+    "dark": {
+        "scheme": "dark",
+        "bg": "#04080f",
+        "bg2": "#060d18",
+        "surface": "#0a1221",
+        "panel": "#0d1829",
+        "border": "#1a2d45",
+        "border2": "#243d5c",
+        "deep": "#101e30",
+        "plasma": "#4d9fff",
+        "plasma2": "#7bbcff",
+        "plasma_dim": "#1a3d6b",
+        "acid": "#2de8a8",
+        "acid_dim": "#0d4a35",
+        "warn": "#ff7c43",
+        "warn_dim": "#4a2010",
+        "violet": "#a855f7",
+        "rose": "#f43f5e",
+        "text": "#d4e8ff",
+        "text_muted": "#7a9dbf",
+        "text_dim": "#3d5a78",
+        "dim": "#243d5c",
+        "glow_plasma": "0 0 20px rgba(77,159,255,0.25), 0 0 60px rgba(77,159,255,0.08)",
+        "glow_acid": "0 0 20px rgba(45,232,168,0.25), 0 0 60px rgba(45,232,168,0.08)",
+        "shadow": "0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)",
+        "shadow_strong": "0 16px 40px rgba(0,0,0,0.5)",
+        "sidebar_bg": "linear-gradient(180deg, #060d18 0%, #08111e 50%, #060d18 100%)",
+        "scanline_layer": (
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, "
+            "rgba(77,159,255,0.015) 2px, rgba(77,159,255,0.015) 4px), "
+            "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(77,159,255,0.06) 0%, transparent 70%)"
+        ),
+    },
+    "light": {
+        "scheme": "light",
+        "bg": "#f4f7fb",
+        "bg2": "#eaf0f7",
+        "surface": "#ffffff",
+        "panel": "#f7fbff",
+        "border": "#d8e2ee",
+        "border2": "#bfd1e4",
+        "deep": "#eef4fa",
+        "plasma": "#2563eb",
+        "plasma2": "#3b82f6",
+        "plasma_dim": "#dbeafe",
+        "acid": "#059669",
+        "acid_dim": "#d1fae5",
+        "warn": "#ea580c",
+        "warn_dim": "#ffedd5",
+        "violet": "#7c3aed",
+        "rose": "#dc2626",
+        "text": "#0f172a",
+        "text_muted": "#475569",
+        "text_dim": "#64748b",
+        "dim": "#cbd5e1",
+        "glow_plasma": "0 10px 28px rgba(37,99,235,0.12), 0 2px 10px rgba(37,99,235,0.08)",
+        "glow_acid": "0 10px 28px rgba(5,150,105,0.10), 0 2px 10px rgba(5,150,105,0.06)",
+        "shadow": "0 12px 30px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.06)",
+        "shadow_strong": "0 18px 44px rgba(15,23,42,0.12)",
+        "sidebar_bg": "linear-gradient(180deg, #ffffff 0%, #f3f7fb 48%, #edf3f9 100%)",
+        "scanline_layer": (
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, "
+            "rgba(37,99,235,0.022) 2px, rgba(37,99,235,0.022) 4px), "
+            "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,235,0.07) 0%, transparent 70%)"
+        ),
+    },
+}
+
+st.session_state.setdefault("theme_mode", "dark")
+theme_mode = st.session_state["theme_mode"]
+theme = THEMES.get(theme_mode, THEMES["dark"])
+
+# ─────────────────────────────────────────────
+#  THEME-AWARE CSS
+# ─────────────────────────────────────────────
+root_vars = f"""
+    --bg:        {theme["bg"]};
+    --bg2:       {theme["bg2"]};
+    --surface:   {theme["surface"]};
+    --panel:     {theme["panel"]};
+    --border:    {theme["border"]};
+    --border2:   {theme["border2"]};
+    --deep:      {theme["deep"]};
+
+    --plasma:    {theme["plasma"]};
+    --plasma2:   {theme["plasma2"]};
+    --plasma-dim:{theme["plasma_dim"]};
+    --acid:      {theme["acid"]};
+    --acid-dim:  {theme["acid_dim"]};
+    --warn:      {theme["warn"]};
+    --warn-dim:  {theme["warn_dim"]};
+    --violet:    {theme["violet"]};
+    --rose:      {theme["rose"]};
+
+    --text:      {theme["text"]};
+    --text-muted:{theme["text_muted"]};
+    --text-dim:  {theme["text_dim"]};
+    --dim:       {theme["dim"]};
+
+    --glow-plasma: {theme["glow_plasma"]};
+    --glow-acid:   {theme["glow_acid"]};
+    --shadow:      {theme["shadow"]};
+    --shadow-strong: {theme["shadow_strong"]};
+    --sidebar-bg:  {theme["sidebar_bg"]};
+    --scanline-layer: {theme["scanline_layer"]};
+    --scheme:      {theme["scheme"]};
+"""
+theme_css = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap');
 
 :root {
-    --bg:        #04080f;
-    --bg2:       #060d18;
-    --surface:   #0a1221;
-    --panel:     #0d1829;
-    --border:    #1a2d45;
-    --border2:   #243d5c;
-    --deep:      #101e30;
-
-    --plasma:    #4d9fff;
-    --plasma2:   #7bbcff;
-    --plasma-dim:#1a3d6b;
-    --acid:      #2de8a8;
-    --acid-dim:  #0d4a35;
-    --warn:      #ff7c43;
-    --warn-dim:  #4a2010;
-    --violet:    #a855f7;
-    --rose:      #f43f5e;
-
-    --text:      #d4e8ff;
-    --text-muted:#7a9dbf;
-    --text-dim:  #3d5a78;
-    --dim:       #243d5c;
-
-    --glow-plasma: 0 0 20px rgba(77,159,255,0.25), 0 0 60px rgba(77,159,255,0.08);
-    --glow-acid:   0 0 20px rgba(45,232,168,0.25), 0 0 60px rgba(45,232,168,0.08);
-    --shadow:      0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+__ROOT_VARS__
 }
 
 /* ── GLOBAL BASE ─────────────────────────────── */
@@ -84,27 +167,19 @@ st.markdown("""
     background: var(--bg) !important;
     font-family: 'Syne', sans-serif !important;
     color: var(--text) !important;
-    color-scheme: dark;
+    color-scheme: var(--scheme);
 }
 
 /* Scanline overlay — subtle, no jank */
 .stApp::before {
     content: '';
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background-image:
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(77,159,255,0.015) 2px,
-            rgba(77,159,255,0.015) 4px
-        ),
-        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(77,159,255,0.06) 0%, transparent 70%);
+    background-image: var(--scanline-layer);
 }
 
 /* ── SIDEBAR ─────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #060d18 0%, #08111e 50%, #060d18 100%) !important;
+    background: var(--sidebar-bg) !important;
     border-right: 1px solid var(--border) !important;
 }
 [data-testid="stSidebar"] > div:first-child {
@@ -251,6 +326,27 @@ code, pre {
     color: var(--text) !important;
     letter-spacing: 0.06em !important;
 }
+[data-testid="stRadio"] [role="radiogroup"] {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+[data-testid="stRadio"] label {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 999px !important;
+    padding: 0.35rem 0.85rem !important;
+    transition: all 0.2s ease !important;
+}
+[data-testid="stRadio"] label:hover {
+    border-color: var(--plasma) !important;
+    box-shadow: var(--glow-plasma) !important;
+}
+[data-testid="stRadio"] label span {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 10px !important;
+    letter-spacing: 0.12em !important;
+}
 [data-testid="stSlider"] {
     padding: 4px 0 !important;
 }
@@ -283,7 +379,7 @@ code, pre {
 .metric-cell:hover {
     border-color: var(--border2);
     transform: translateY(-3px);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    box-shadow: var(--shadow-strong);
 }
 .metric-cell:hover::before { opacity: 0.8; }
 .metric-value {
@@ -449,22 +545,23 @@ code, pre {
     .section-header  { font-size: 9px !important; }
 }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(theme_css.replace("__ROOT_VARS__", root_vars), unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 #  MATPLOTLIB PALETTE
 # ─────────────────────────────────────────────
-BG     = "#04080f"
-PANEL  = "#0a1221"
-DEEP   = "#060d18"
-PLASMA = "#4d9fff"
-ACID   = "#2de8a8"
-WARN   = "#ff7c43"
-GHOST  = "#3d6080"
-TEXT   = "#d4e8ff"
-DIM    = "#1a2d45"
-VIOLET = "#a855f7"
-ROSE   = "#f43f5e"
+BG     = theme["bg"]
+PANEL  = theme["panel"]
+DEEP   = theme["bg2"]
+PLASMA = theme["plasma"]
+ACID   = theme["acid"]
+WARN   = theme["warn"]
+GHOST  = theme["text_dim"] if theme_mode == "light" else "#3d6080"
+TEXT   = theme["text"]
+DIM    = theme["border"]
+VIOLET = theme["violet"]
+ROSE   = theme["rose"]
 
 LOGO_PATH = Path(__file__).with_name("SOA-PNG.png")
 
@@ -533,6 +630,30 @@ def member_row(idx, name):
 #  SIDEBAR
 # ─────────────────────────────────────────────
 with st.sidebar:
+    st.markdown(
+        f"""
+        <div style="padding:6px 0 10px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.28em;
+                        color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">
+                Theme Control
+            </div>
+            <div style="font-family:'Orbitron',monospace;font-size:13px;font-weight:800;
+                        color:var(--plasma);letter-spacing:0.12em;margin-bottom:8px;">
+                {theme_mode.upper()} MODE
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.radio(
+        "Theme Mode",
+        ["dark", "light"],
+        key="theme_mode",
+        horizontal=True,
+        label_visibility="collapsed",
+        format_func=lambda value: "DARK" if value == "dark" else "LIGHT",
+    )
+
     if LOGO_PATH.exists():
         st.markdown('<div style="display:flex;justify-content:center;padding:10px 0 4px;">', unsafe_allow_html=True)
         st.image(str(LOGO_PATH), width=240)

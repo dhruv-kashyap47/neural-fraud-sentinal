@@ -1,6 +1,6 @@
 # ◈ NEURAL FRAUD SENTINEL
 
-> **Credit Card Fraud Detection — Ensemble ML Architecture**  
+> **Credit Card Fraud Detection — Ensemble ML Architecture**
 > Final Year Project · SOA University ITER · Group 27-09
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://neural-fraud-sentinal.streamlit.app)
@@ -27,7 +27,7 @@ The system is designed for the **highly imbalanced** [Kaggle Credit Card Fraud d
 | 03 | Adwait Bhatnagar |
 | 04 | Diwankar Kumar Choudhary |
 
-**Institution:** SOA University — Institute of Technical Education and Research (ITER)  
+**Institution:** SOA University — Institute of Technical Education and Research (ITER)
 **Group:** 27-09 · 2026
 
 ---
@@ -44,6 +44,35 @@ The system is designed for the **highly imbalanced** [Kaggle Credit Card Fraud d
 - **Deployment-ready** on Streamlit Community Cloud
 
 ---
+
+🚀 System Architecture
+                ┌────────────────────┐
+                │   Incoming Data    │
+                │ (Transactions API) │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │ Feature Pipeline   │
+                │ (Scaling + Signals)│
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │  Ensemble Models   │
+                │ LR + RF + XGB + SVM│
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │   Risk Engine      │
+                │ (Decision Logic)   │
+                └─────────┬──────────┘
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+     ALLOW           FLAG REVIEW        BLOCK
+     
 
 ## 🤖 ML Architecture
 
