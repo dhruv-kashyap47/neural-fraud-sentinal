@@ -78,6 +78,7 @@ print(f"   After SMOTE — Train: {len(X_train_res):,} "
 def evaluate(name, model, X_test, y_test):
     y_pred = model.predict(X_test)
     y_prob = model.predict_proba(X_test)[:, 1]
+    roc_auc = roc_auc_score(y_test, y_prob)
     print(f"\n{'─'*45}")
     print(f"  {name}")
     print(f"{'─'*45}")
@@ -85,12 +86,12 @@ def evaluate(name, model, X_test, y_test):
     print(f"  Precision: {precision_score(y_test, y_pred, zero_division=0):.4f}")
     print(f"  Recall   : {recall_score(y_test, y_pred, zero_division=0):.4f}")
     print(f"  F1-Score : {f1_score(y_test, y_pred, zero_division=0):.4f}")
-    print(f"  ROC-AUC  : {roc_auc_score(y_test, y_prob):.4f}")
+    print(f"  ROC-AUC  : {roc_auc:.4f}")
     cm = confusion_matrix(y_test, y_pred)
     print(f"  Confusion Matrix:")
     print(f"    TN={cm[0,0]} FP={cm[0,1]}")
     print(f"    FN={cm[1,0]} TP={cm[1,1]}")
-    return roc_auc_score(y_test, y_prob)
+    return roc_auc
 
 results = {}
 
@@ -110,7 +111,14 @@ joblib.dump(rf, "models/random_forest.pkl")
 
 # XGBoost
 print("\n[3/6] Training XGBoost...")
-xgb = XGBClassifier(n_estimators=100, random_state=42, eval_metric="logloss", verbosity=0)
+xgb = XGBClassifier(
+    n_estimators=100,
+    random_state=42,
+    eval_metric="logloss",
+    verbosity=0,
+    n_jobs=-1,
+    tree_method="hist",
+)
 xgb.fit(X_train_res, y_train_res)
 results["XGBoost"] = evaluate("XGBoost", xgb, X_test, y_test)
 joblib.dump(xgb, "models/xgboost.pkl")
@@ -119,7 +127,8 @@ joblib.dump(xgb, "models/xgboost.pkl")
 print("\n[4/6] Training SVM (subset of 30k samples for speed)...")
 svm = SVC(probability=True, random_state=42, C=1.0, kernel="rbf")
 n_svm = min(30000, len(X_train_res))
-idx = np.random.choice(len(X_train_res), n_svm, replace=False)
+rng = np.random.default_rng(42)
+idx = rng.choice(len(X_train_res), n_svm, replace=False)
 svm.fit(X_train_res.iloc[idx], y_train_res.iloc[idx])
 results["SVM"] = evaluate("SVM", svm, X_test, y_test)
 joblib.dump(svm, "models/svm.pkl")
@@ -131,7 +140,8 @@ voting = VotingClassifier(
         ("lr", LogisticRegression(max_iter=1000, C=0.1, random_state=42)),
         ("rf", RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)),
         ("xgb", XGBClassifier(n_estimators=100, random_state=42,
-                               eval_metric="logloss", verbosity=0)),
+                               eval_metric="logloss", verbosity=0,
+                               n_jobs=-1, tree_method="hist")),
     ],
     voting="soft"
 )
@@ -146,10 +156,11 @@ stacking = StackingClassifier(
         ("lr", LogisticRegression(max_iter=1000, C=0.1, random_state=42)),
         ("rf", RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)),
         ("xgb", XGBClassifier(n_estimators=100, random_state=42,
-                               eval_metric="logloss", verbosity=0)),
+                               eval_metric="logloss", verbosity=0,
+                               n_jobs=-1, tree_method="hist")),
     ],
     final_estimator=LogisticRegression(max_iter=1000, random_state=42),
-    cv=5, n_jobs=-1
+    cv=3, n_jobs=-1
 )
 stacking.fit(X_train_res, y_train_res)
 results["Stacking Ensemble"] = evaluate("Stacking Ensemble", stacking, X_test, y_test)
