@@ -45,35 +45,6 @@ The system is designed for the **highly imbalanced** [Kaggle Credit Card Fraud d
 
 ---
 
-🚀 System Architecture
-                ┌────────────────────┐
-                │   Incoming Data    │
-                │ (Transactions API) │
-                └─────────┬──────────┘
-                          │
-                          ▼
-                ┌────────────────────┐
-                │ Feature Pipeline   │
-                │ (Scaling + Signals)│
-                └─────────┬──────────┘
-                          │
-                          ▼
-                ┌────────────────────┐
-                │  Ensemble Models   │
-                │ LR + RF + XGB + SVM│
-                └─────────┬──────────┘
-                          │
-                          ▼
-                ┌────────────────────┐
-                │   Risk Engine      │
-                │ (Decision Logic)   │
-                └─────────┬──────────┘
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-     ALLOW           FLAG REVIEW        BLOCK
-     
-
 ## 🤖 ML Architecture
 
 ### Models Trained
