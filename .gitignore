@@ -5,5 +5,9 @@ venv/
 .streamlit/
 
 creditcard.csv
+creditcard_1.csv
+creditcard_2.csv
 creditcard_small.csv
+*.pkl
+models/
 27-09.pptx

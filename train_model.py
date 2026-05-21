@@ -1,181 +1,262 @@
 """
-train_model.py
-Run this script ONCE to train all models and save them.
-Usage: python train_model.py
+Train the fraud detection models offline and save the trained artifacts.
+
+Usage:
+    python train_model.py
 """
 
-import pandas as pd
-import numpy as np
-import joblib
+from __future__ import annotations
+
 import os
 import warnings
-warnings.filterwarnings("ignore")
 
+import joblib
+import numpy as np
+import pandas as pd
+from imblearn.over_sampling import SMOTE
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier, VotingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import (
-    RandomForestClassifier, GradientBoostingClassifier,
-    VotingClassifier, StackingClassifier
-)
 from sklearn.svm import SVC
-from sklearn.metrics import (
-    classification_report, roc_auc_score, f1_score,
-    precision_score, recall_score, accuracy_score, confusion_matrix
-)
-from imblearn.over_sampling import SMOTE
 from xgboost import XGBClassifier
 
-print("=" * 60)
-print("  Credit Card Fraud Detection - Model Training Script")
-print("  SOA University ITER | Group 27-09")
-print("=" * 60)
+warnings.filterwarnings("ignore")
 
-os.makedirs("models", exist_ok=True)
+RANDOM_STATE = 42
+TEST_SIZE = 0.2
+RF_N_ESTIMATORS = 80
+XGB_N_ESTIMATORS = 80
+SVM_MAX_SAMPLES = 10000
 
-# ─────────────────────────────────────────────
-#  LOAD DATA
-# ─────────────────────────────────────────────
 DATA_PATH = "creditcard.csv"
+OUTPUT_DIR = "models"
+NUMERIC_COLUMNS = ["Amount", "Time"]
+ARTIFACT_FILES = {
+    "Logistic Regression": "logistic_regression.pkl",
+    "Random Forest": "random_forest.pkl",
+    "XGBoost": "xgboost.pkl",
+    "SVM": "svm.pkl",
+    "Voting Ensemble": "voting_ensemble.pkl",
+    "Stacking Ensemble": "stacking_ensemble.pkl",
+}
 
-if not os.path.exists(DATA_PATH):
-    print("\n❌ ERROR: creditcard.csv not found!")
-    print("Download from: https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud")
-    exit()
 
-print(f"\n📂 Loading dataset from {DATA_PATH}...")
-df = pd.read_csv(DATA_PATH)
-print(f"✅ Loaded: {df.shape[0]:,} rows × {df.shape[1]} columns")
-print(f"   Fraud: {df['Class'].sum()} ({df['Class'].mean()*100:.3f}%)")
-print(f"   Legit: {(df['Class']==0).sum():,}")
+def load_dataset(path: str) -> pd.DataFrame:
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"{path} not found. Download the Kaggle Credit Card Fraud Detection dataset first."
+        )
 
-# ─────────────────────────────────────────────
-#  PREPROCESSING
-# ─────────────────────────────────────────────
-print("\n⚙️  Preprocessing...")
+    df = pd.read_csv(path)
+    required = {"Class", "Amount", "Time"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Dataset is missing required columns: {', '.join(sorted(missing))}")
 
-scaler = StandardScaler()
-df[["Amount", "Time"]] = scaler.fit_transform(df[["Amount", "Time"]])
+    class_values = set(pd.Series(df["Class"]).dropna().unique().tolist())
+    if class_values != {0, 1}:
+        raise ValueError("Column `Class` must contain both 0 and 1.")
 
-X = df.drop("Class", axis=1)
-y = df["Class"]
+    return df
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-print(f"   Train: {len(X_train):,} | Test: {len(X_test):,}")
 
-# Apply SMOTE
-print("\n🔄 Applying SMOTE...")
-smote = SMOTE(random_state=42)
-X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
-print(f"   After SMOTE — Train: {len(X_train_res):,} "
-      f"(Fraud: {y_train_res.sum():,}, Legit: {(y_train_res==0).sum():,})")
+def preprocess(df: pd.DataFrame, test_size: float = TEST_SIZE, seed: int = RANDOM_STATE):
+    X = df.drop("Class", axis=1).copy()
+    y = df["Class"].copy()
 
-# ─────────────────────────────────────────────
-#  TRAIN MODELS
-# ─────────────────────────────────────────────
-def evaluate(name, model, X_test, y_test):
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        stratify=y,
+        random_state=seed,
+    )
+
+    scaler = StandardScaler()
+    X_train = X_train.copy()
+    X_test = X_test.copy()
+    X_train[NUMERIC_COLUMNS] = scaler.fit_transform(X_train[NUMERIC_COLUMNS])
+    X_test[NUMERIC_COLUMNS] = scaler.transform(X_test[NUMERIC_COLUMNS])
+
+    X_train_res, y_train_res = SMOTE(random_state=seed).fit_resample(X_train, y_train)
+    X_train_res = pd.DataFrame(X_train_res, columns=X.columns)
+    y_train_res = pd.Series(y_train_res, name="Class")
+
+    return X_train_res, X_test.reset_index(drop=True), y_train_res, y_test.reset_index(drop=True), scaler
+
+
+def evaluate(name: str, model, X_test: pd.DataFrame, y_test: pd.Series):
     y_pred = model.predict(X_test)
     y_prob = model.predict_proba(X_test)[:, 1]
     roc_auc = roc_auc_score(y_test, y_prob)
-    print(f"\n{'─'*45}")
+
+    print(f"\n{'─' * 45}")
     print(f"  {name}")
-    print(f"{'─'*45}")
+    print(f"{'─' * 45}")
     print(f"  Accuracy : {accuracy_score(y_test, y_pred):.4f}")
     print(f"  Precision: {precision_score(y_test, y_pred, zero_division=0):.4f}")
     print(f"  Recall   : {recall_score(y_test, y_pred, zero_division=0):.4f}")
     print(f"  F1-Score : {f1_score(y_test, y_pred, zero_division=0):.4f}")
     print(f"  ROC-AUC  : {roc_auc:.4f}")
     cm = confusion_matrix(y_test, y_pred)
-    print(f"  Confusion Matrix:")
-    print(f"    TN={cm[0,0]} FP={cm[0,1]}")
-    print(f"    FN={cm[1,0]} TP={cm[1,1]}")
-    return roc_auc
+    print("  Confusion Matrix:")
+    print(f"    TN={cm[0, 0]} FP={cm[0, 1]}")
+    print(f"    FN={cm[1, 0]} TP={cm[1, 1]}")
 
-results = {}
+    return {
+        "model": model,
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred, zero_division=0),
+        "recall": recall_score(y_test, y_pred, zero_division=0),
+        "f1": f1_score(y_test, y_pred, zero_division=0),
+        "roc_auc": roc_auc,
+    }
 
-# Logistic Regression
-print("\n[1/6] Training Logistic Regression...")
-lr = LogisticRegression(max_iter=1000, random_state=42, C=0.1)
-lr.fit(X_train_res, y_train_res)
-results["Logistic Regression"] = evaluate("Logistic Regression", lr, X_test, y_test)
-joblib.dump(lr, "models/logistic_regression.pkl")
 
-# Random Forest
-print("\n[2/6] Training Random Forest...")
-rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-rf.fit(X_train_res, y_train_res)
-results["Random Forest"] = evaluate("Random Forest", rf, X_test, y_test)
-joblib.dump(rf, "models/random_forest.pkl")
+def train_models(X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series):
+    rng = np.random.default_rng(RANDOM_STATE)
+    results = {}
 
-# XGBoost
-print("\n[3/6] Training XGBoost...")
-xgb = XGBClassifier(
-    n_estimators=100,
-    random_state=42,
-    eval_metric="logloss",
-    verbosity=0,
-    n_jobs=-1,
-    tree_method="hist",
-)
-xgb.fit(X_train_res, y_train_res)
-results["XGBoost"] = evaluate("XGBoost", xgb, X_test, y_test)
-joblib.dump(xgb, "models/xgboost.pkl")
+    def fit_and_eval(name: str, model, train_X=X_train, train_y=y_train):
+        model.fit(train_X, train_y)
+        results[name] = evaluate(name, model, X_test, y_test)
+        return model
 
-# SVM
-print("\n[4/6] Training SVM (subset of 30k samples for speed)...")
-svm = SVC(probability=True, random_state=42, C=1.0, kernel="rbf")
-n_svm = min(30000, len(X_train_res))
-rng = np.random.default_rng(42)
-idx = rng.choice(len(X_train_res), n_svm, replace=False)
-svm.fit(X_train_res.iloc[idx], y_train_res.iloc[idx])
-results["SVM"] = evaluate("SVM", svm, X_test, y_test)
-joblib.dump(svm, "models/svm.pkl")
+    fit_and_eval(
+        "Logistic Regression",
+        LogisticRegression(C=0.1, max_iter=1000, random_state=RANDOM_STATE),
+    )
+    fit_and_eval(
+        "Random Forest",
+        RandomForestClassifier(
+            n_estimators=RF_N_ESTIMATORS,
+            n_jobs=-1,
+            random_state=RANDOM_STATE,
+        ),
+    )
+    fit_and_eval(
+        "XGBoost",
+        XGBClassifier(
+            n_estimators=XGB_N_ESTIMATORS,
+            eval_metric="logloss",
+            verbosity=0,
+            n_jobs=-1,
+            tree_method="hist",
+            random_state=RANDOM_STATE,
+        ),
+    )
 
-# Voting Ensemble
-print("\n[5/6] Training Voting Ensemble...")
-voting = VotingClassifier(
-    estimators=[
-        ("lr", LogisticRegression(max_iter=1000, C=0.1, random_state=42)),
-        ("rf", RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)),
-        ("xgb", XGBClassifier(n_estimators=100, random_state=42,
-                               eval_metric="logloss", verbosity=0,
-                               n_jobs=-1, tree_method="hist")),
-    ],
-    voting="soft"
-)
-voting.fit(X_train_res, y_train_res)
-results["Voting Ensemble"] = evaluate("Voting Ensemble", voting, X_test, y_test)
-joblib.dump(voting, "models/voting_ensemble.pkl")
+    svm = SVC(probability=True, random_state=RANDOM_STATE, C=1.0, kernel="rbf")
+    sample_size = min(SVM_MAX_SAMPLES, len(X_train))
+    sample_idx = rng.choice(len(X_train), sample_size, replace=False)
+    svm.fit(X_train.iloc[sample_idx], y_train.iloc[sample_idx])
+    results["SVM"] = evaluate("SVM", svm, X_test, y_test)
 
-# Stacking Ensemble
-print("\n[6/6] Training Stacking Ensemble...")
-stacking = StackingClassifier(
-    estimators=[
-        ("lr", LogisticRegression(max_iter=1000, C=0.1, random_state=42)),
-        ("rf", RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)),
-        ("xgb", XGBClassifier(n_estimators=100, random_state=42,
-                               eval_metric="logloss", verbosity=0,
-                               n_jobs=-1, tree_method="hist")),
-    ],
-    final_estimator=LogisticRegression(max_iter=1000, random_state=42),
-    cv=3, n_jobs=-1
-)
-stacking.fit(X_train_res, y_train_res)
-results["Stacking Ensemble"] = evaluate("Stacking Ensemble", stacking, X_test, y_test)
-joblib.dump(stacking, "models/stacking_ensemble.pkl")
-joblib.dump(scaler, "models/scaler.pkl")
+    voting = VotingClassifier(
+        estimators=[
+            ("lr", LogisticRegression(C=0.1, max_iter=1000, random_state=RANDOM_STATE)),
+            (
+                "rf",
+                RandomForestClassifier(
+                    n_estimators=RF_N_ESTIMATORS,
+                    n_jobs=-1,
+                    random_state=RANDOM_STATE,
+                ),
+            ),
+            (
+                "xgb",
+                XGBClassifier(
+                    n_estimators=XGB_N_ESTIMATORS,
+                    eval_metric="logloss",
+                    verbosity=0,
+                    n_jobs=-1,
+                    tree_method="hist",
+                    random_state=RANDOM_STATE,
+                ),
+            ),
+        ],
+        voting="soft",
+    )
+    fit_and_eval("Voting Ensemble", voting)
 
-# ─────────────────────────────────────────────
-#  FINAL SUMMARY
-# ─────────────────────────────────────────────
-best = max(results, key=results.get)
-print("\n" + "=" * 60)
-print("  FINAL RESULTS SUMMARY (ROC-AUC)")
-print("=" * 60)
-for name, score in sorted(results.items(), key=lambda x: -x[1]):
-    marker = " ← BEST" if name == best else ""
-    print(f"  {name:<25} {score:.4f}{marker}")
-print(f"\n✅ Best model: {best} saved to models/")
-print("=" * 60)
+    stacking = StackingClassifier(
+        estimators=[
+            ("lr", LogisticRegression(C=0.1, max_iter=1000, random_state=RANDOM_STATE)),
+            (
+                "rf",
+                RandomForestClassifier(
+                    n_estimators=RF_N_ESTIMATORS,
+                    n_jobs=-1,
+                    random_state=RANDOM_STATE,
+                ),
+            ),
+            (
+                "xgb",
+                XGBClassifier(
+                    n_estimators=XGB_N_ESTIMATORS,
+                    eval_metric="logloss",
+                    verbosity=0,
+                    n_jobs=-1,
+                    tree_method="hist",
+                    random_state=RANDOM_STATE,
+                ),
+            ),
+        ],
+        final_estimator=LogisticRegression(max_iter=1000, random_state=RANDOM_STATE),
+        cv=3,
+        n_jobs=-1,
+    )
+    fit_and_eval("Stacking Ensemble", stacking)
+
+    return results
+
+
+def save_artifacts(models: dict, scaler: StandardScaler):
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    for name, payload in models.items():
+        joblib.dump(payload["model"], os.path.join(OUTPUT_DIR, ARTIFACT_FILES[name]))
+    joblib.dump(scaler, os.path.join(OUTPUT_DIR, "scaler.pkl"))
+
+
+def main():
+    print("=" * 60)
+    print("  Credit Card Fraud Detection - Model Training Script")
+    print("  SOA University ITER | Group 27-09")
+    print("=" * 60)
+
+    df = load_dataset(DATA_PATH)
+    print(f"\n📂 Loaded: {df.shape[0]:,} rows × {df.shape[1]} columns")
+    print(f"   Fraud: {int(df['Class'].sum())} ({df['Class'].mean() * 100:.3f}%)")
+    print(f"   Legit: {(df['Class'] == 0).sum():,}")
+
+    X_train, X_test, y_train, y_test, scaler = preprocess(df)
+    print(f"\nTrain: {len(X_train):,} | Test: {len(X_test):,}")
+    print(f"After SMOTE: {len(X_train):,} train rows")
+
+    results = train_models(X_train, y_train, X_test, y_test)
+    best_name = max(results, key=lambda key: results[key]["roc_auc"])
+
+    save_artifacts(results, scaler)
+    joblib.dump(results[best_name]["model"], os.path.join(OUTPUT_DIR, "best_model.pkl"))
+
+    print("\n" + "=" * 60)
+    print("  FINAL RESULTS SUMMARY (ROC-AUC)")
+    print("=" * 60)
+    for name, payload in sorted(results.items(), key=lambda item: item[1]["roc_auc"], reverse=True):
+        marker = " ← BEST" if name == best_name else ""
+        print(f"  {name:<25} {payload['roc_auc']:.4f}{marker}")
+    print(f"\n✅ Best model: {best_name} saved to {OUTPUT_DIR}/best_model.pkl")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
